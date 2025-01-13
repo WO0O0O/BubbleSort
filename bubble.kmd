@@ -1,0 +1,165 @@
+KMD
+00000000: EA000009    ;         B       test_bubble            ; Branch to main test routine, skipping data section
+00000004:             ; 
+00000004:             ; ; Test array with 10 elements
+00000004:             ; ; IMPORTANT: DEFW defines 32-bit words, so we use LSL #2 (multiply by 4) for addressing
+00000004:             ; ; Each number takes 4 bytes in memory
+00000004: 0000000A    ; tbs_array       DEFW    10, 25, 13, 44, 9, 15, 6, 27, 36, 42
+00000008: 00000019    ; 
+0000000C: 0000000D    ; 
+00000010: 0000002C    ; 
+00000014: 00000009    ; 
+00000018: 0000000F    ; 
+0000001C: 00000006    ; 
+00000020: 0000001B    ; 
+00000024: 00000024    ; 
+00000028: 0000002A    ; 
+0000002C:             ; 
+0000002C:             ;         ALIGN                       ; Ensure word alignment for data access
+0000002C:             ; 
+0000002C:             ; test_bubble
+0000002C: E3A0D801    ;         MOV     R13,#0x10000       ; Initialise stack pointer - CRITICAL for function calls, 
+00000030:             ; 
+00000030:             ;         ; Sort the array
+00000030:             ;         ; IMPORTANT: ADRL is used for loading address of data that's further than 256 bytes
+00000030: E24F0034    ;         ADRL    R0,tbs_array       ; R0 = base address of array (first parameter)
+00000034: E3A0100A    ;         MOV     R1,#10             ; R1 = array length (second parameter)
+00000038: EB000016    ;         BL      BubbleSort         ; Call BubbleSort function
+0000003C:             ; 
+0000003C: EF000002    ;         SWI     2                  ; Exit program
+00000040:             ; 
+00000040:             ; ; Print array helper function
+00000040:             ; ; Parameters:
+00000040:             ; ; R0 - array address (preserved in R4)
+00000040:             ; ; R1 - array length
+00000040:             ; ; DEBUG TIP: If numbers look wrong, check LSL #2 is used for array access
+00000040:             ; print_array
+00000040: E92D401C    ;         STMFD   R13!,{R2-R4,R14}   ; Save registers we'll modify (IMPORTANT: include LR!)
+00000044: E3A02000    ;         MOV     R2,#0              ; R2 = loop counter (i)
+00000048: E1A04000    ;         MOV     R4,R0              ; R4 = save array address (R0 needed for printing)
+0000004C:             ; print_loop
+0000004C: E1520001    ;         CMP     R2,R1              ; Check if we've printed all elements
+00000050: AA000007    ;         BGE     print_done         ; If i >= length, we're done
+00000054: E7940102    ;         LDR     R0,[R4,R2,LSL #2]  ; Load array[i]. LSL #2 multiplies i by 4 for word access
+00000058: EF000004    ;         SWI     4                  ; Print number using SWI 4
+0000005C: E3A0002C    ;         MOV     R0,#44             ; Print comma (ASCII 44)
+00000060: EF000000    ;         SWI     0                  ; SWI 0 prints single character
+00000064: E3A00020    ;         MOV     R0,#32             ; Print space (ASCII 32)
+00000068: EF000000    ;         SWI     0
+0000006C: E2822001    ;         ADD     R2,R2,#1           ; i++
+00000070: EAFFFFF5    ;         B       print_loop
+00000074:             ; print_done
+00000074: E3A0000A    ;         MOV     R0,#10             ; Print newline (ASCII 10)
+00000078: EF000000    ;         SWI     0
+0000007C: E8BD801C    ;         LDMFD   R13!,{R2-R4,PC}    ; Restore registers and return (PC = saved LR)
+00000080:             ; 
+00000080:             ; ; Swap function - modular design like C code
+00000080:             ; ; Parameters:
+00000080:             ; ; R0 - array address
+00000080:             ; ; R1 - index i
+00000080:             ; ; R2 - index j
+00000080:             ; ; DEBUG TIP: If values aren't swapping, check registers are preserved correctly
+00000080:             ; 
+00000080:             ; swap
+00000080: E92D4018    ;         STMFD   R13!,{R3-R4,R14}   ; Save registers we'll modify
+00000084: E7903101    ;         LDR     R3,[R0,R1,LSL #2]  ; R3 = temp = arr[i]
+00000088: E7904102    ;         LDR     R4,[R0,R2,LSL #2]  ; R4 = arr[j]
+0000008C: E7804101    ;         STR     R4,[R0,R1,LSL #2]  ; arr[i] = arr[j]
+00000090: E7803102    ;         STR     R3,[R0,R2,LSL #2]  ; arr[j] = temp
+00000094: E8BD8018    ;         LDMFD   R13!,{R3-R4,PC}    ; Restore registers and return
+00000098:             ; 
+00000098:             ; ; BubbleSort implementation
+00000098:             ; ; Parameters:
+00000098:             ; ; R0 - array address
+00000098:             ; ; R1 - array length
+00000098:             ; ; DEBUG TIP: Watch R2 (i) and R3 (j) to track loop progress
+00000098:             ; BubbleSort
+00000098: E92D40FC    ;         STMFD   R13!,{R2-R7,R14}   ; Save registers we'll modify
+0000009C: E1A07001    ;         MOV     R7,R1              ; R7 = original length (needed for printing)
+000000A0: E2411001    ;         SUB     R1,R1,#1           ; R1 = n-1 (outer loop limit)
+000000A4:             ;         
+000000A4: E3A02000    ;         MOV     R2,#0              ; R2 = i = 0 (outer loop counter)
+000000A8:             ; outer_loop
+000000A8: E1520001    ;         CMP     R2,R1              ; Compare i with n-1
+000000AC: AA000025    ;         BGE     done               ; If i >= n-1, we're done
+000000B0:             ;         
+000000B0:             ;         ; Print pass number
+000000B0:             ;         ; DEBUG TIP: Pass numbers help track progress
+000000B0: E92D000F    ;         STMFD   R13!,{R0-R3}       ; Save registers before printing
+000000B4: E3A00050    ;         MOV     R0,#80             ; 'P'
+000000B8: EF000000    ;         SWI     0
+000000BC: E3A00061    ;         MOV     R0,#97             ; 'a'
+000000C0: EF000000    ;         SWI     0
+000000C4: E3A00073    ;         MOV     R0,#115            ; 's'
+000000C8: EF000000    ;         SWI     0
+000000CC: E3A00073    ;         MOV     R0,#115            ; 's'
+000000D0: EF000000    ;         SWI     0
+000000D4: E3A00020    ;         MOV     R0,#32             ; Space
+000000D8: EF000000    ;         SWI     0
+000000DC: E2820001    ;         ADD     R0,R2,#1           ; Pass number = i+1 (make it 1-based)
+000000E0: EF000004    ;         SWI     4
+000000E4: E3A0000A    ;         MOV     R0,#10             ; Newline
+000000E8: EF000000    ;         SWI     0
+000000EC: E8BD000F    ;         LDMFD   R13!,{R0-R3}       ; Restore registers after printing
+000000F0:             ;         
+000000F0: E3A03000    ;         MOV     R3,#0              ; R3 = j = 0 (inner loop counter)
+000000F4: E0414002    ;         SUB     R4,R1,R2           ; R4 = n-i-1 (inner loop limit)
+000000F8:             ; inner_loop
+000000F8: E1530004    ;         CMP     R3,R4              ; Compare j with n-i-1
+000000FC: AA00000F    ;         BGE     next_pass          ; If j >= n-i-1, this pass is done
+00000100:             ;         
+00000100:             ;         ; Print array state after each comparison
+00000100:             ;         ; DEBUG TIP: Watch array state to track sorting progress
+00000100: E92D001F    ;         STMFD   R13!,{R0-R4}       ; Save registers before printing
+00000104: E1A01007    ;         MOV     R1,R7              ; Use original length for printing
+00000108: EBFFFFCC    ;         BL      print_array
+0000010C: E8BD001F    ;         LDMFD   R13!,{R0-R4}       ; Restore registers after printing
+00000110:             ;         
+00000110:             ;         ; Load and compare adjacent elements
+00000110:             ;         ; DEBUG TIP: Check R5 and R6 values to verify comparison
+00000110: E7905103    ;         LDR     R5,[R0,R3,LSL #2]  ; R5 = array[j]
+00000114: E2836001    ;         ADD     R6,R3,#1           ; R6 = j+1
+00000118: E7906106    ;         LDR     R6,[R0,R6,LSL #2]  ; R6 = array[j+1]
+0000011C: E1550006    ;         CMP     R5,R6              ; Compare array[j] with array[j+1]
+00000120: DA000004    ;         BLE     no_swap            ; If array[j] <= array[j+1], no swap needed
+00000124:             ;         
+00000124:             ;         ; Call swap function if array[j] > array[j+1]
+00000124: E92D001F    ;         STMFD   R13!,{R0-R4}       ; Save registers before swap
+00000128: E1A01003    ;         MOV     R1,R3              ; First index = j
+0000012C: E2832001    ;         ADD     R2,R3,#1           ; Second index = j+1
+00000130: EBFFFFD2    ;         BL      swap
+00000134: E8BD001F    ;         LDMFD   R13!,{R0-R4}       ; Restore registers after swap
+00000138:             ;         
+00000138:             ; no_swap
+00000138: E2833001    ;         ADD     R3,R3,#1           ; j++
+0000013C: EAFFFFED    ;         B       inner_loop
+00000140:             ;         
+00000140:             ; next_pass
+00000140: E2822001    ;         ADD     R2,R2,#1           ; i++
+00000144: EAFFFFD7    ;         B       outer_loop
+00000148:             ;         
+00000148:             ; done    
+00000148: E8BD80FC    ;         LDMFD   R13!,{R2-R7,PC}    ; Restore registers and return
+0000014C:             ; 
+0000014C:             ; ; KEY DEBUGGING TIPS:
+0000014C:             ; ; 1. Always check LSL #2 is used for array access (32-bit words)
+0000014C:             ; ; 2. Watch register preservation around function calls
+0000014C:             ; ; 3. Monitor R2 (i) and R3 (j) for loop control
+0000014C:             ; ; 4. Use pass numbers and array printing to track progress
+0000014C:             ; ; 5. Verify R5 and R6 values before comparison
+0000014C:             ; ; 6. Check stack operations (STMFD/LDMFD) are balanced
+0000014C:             ; 
+
+Symbol Table: Labels
+: tbs_array                         00000004  Local -- ARM
+: test_bubble                       0000002C  Local -- ARM
+: print_array                       00000040  Local -- ARM
+: print_loop                        0000004C  Local -- ARM
+: print_done                        00000074  Local -- ARM
+: swap                              00000080  Local -- ARM
+: BubbleSort                        00000098  Local -- ARM
+: outer_loop                        000000A8  Local -- ARM
+: inner_loop                        000000F8  Local -- ARM
+: no_swap                           00000138  Local -- ARM
+: next_pass                         00000140  Local -- ARM
+: done                              00000148  Local -- ARM

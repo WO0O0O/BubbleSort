@@ -1,0 +1,102 @@
+REGISTER TRACKING MAP FOR BUBBLE SORT
+====================================
+
+Fixed Registers:
+R13 (SP) = 0x10000    Stack Pointer
+R14 (LR) = Return Address
+R15 (PC) = Program Counter
+
+Function: print_array
+==================
+Input State:
+R0 = array address    (preserved in R4)
+R1 = array length
+R2-R4 = undefined
+
+During Execution:
+R0 = used for printing
+R2 = loop counter (i)
+R4 = saved array address
+
+Preserved: {R2-R4,R14}
+Modified: R0 (printing)
+
+Function: swap
+=============
+Input State:
+R0 = array address
+R1 = index i
+R2 = index j
+R3-R4 = undefined
+
+During Execution:
+R3 = temp = arr[i]
+R4 = temp = arr[j]
+
+Preserved: {R3-R4,R14}
+Modified: None (R0-R2 untouched)
+
+Function: BubbleSort
+===================
+Input State:
+R0 = array address
+R1 = array length
+R2-R7 = undefined
+
+Register Allocation:
+R0  = array address      (preserved throughout)
+R1  = n-1               (modified from input length)
+R2  = i                 (outer loop counter)
+R3  = j                 (inner loop counter)
+R4  = n-i-1            (inner loop limit)
+R5  = array[j]         (comparison)
+R6  = array[j+1]       (comparison)
+R7  = original length  (preserved for printing)
+
+Preserved: {R2-R7,R14}
+Modified: R1 (becomes n-1)
+
+CRITICAL POINTS FOR REGISTER PRESERVATION
+=======================================
+1. Before print_array call:
+   Save:    {R0-R4}
+   Because: print_array modifies R0 for printing
+   
+2. Before swap call:
+   Save:    {R0-R4}
+   Because: R1,R2 needed for loop counters but modified for swap indices
+
+REGISTER STATE DURING BUBBLESORT MAIN LOOP
+========================================
+Outer Loop:
+R2 = 0 to (n-1)        Must preserve during function calls
+R1 = n-1               Must preserve during function calls
+
+Inner Loop:
+R3 = 0 to (n-i-1)      Can be modified between iterations
+R4 = n-i-1             Recalculated each outer loop
+
+Comparison:
+R5 = array[j]          Temporary
+R6 = array[j+1]        Temporary
+
+DEBUGGING CHECKPOINTS
+===================
+1. Stack Operations:
+   - Entry:  STMFD R13!,{saved regs}
+   - Exit:   LDMFD R13!,{same regs}
+   
+2. Array Access:
+   - Always use LSL #2
+   - Base in R0
+   - Index in R2 (print) or R3/R6 (sort)
+
+3. Loop Counters:
+   - R2 starts at 0
+   - R3 starts at 0
+   - R2 increment by 1
+   - R3 increment by 1
+
+4. Function Call Protection:
+   print_array: Save {R0-R4}
+   swap:       Save {R0-R4}
